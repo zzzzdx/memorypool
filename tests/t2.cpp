@@ -1,4 +1,4 @@
-#include "gtest.h"
+#include <stdio.h>
 #include <thread>
 #include <vector>
 #include "thread_cache.h"
@@ -10,7 +10,7 @@ void run()
     printf("%d %p\n",std::this_thread::get_id(),&c);
 }
 
-GTEST_TEST(memory_pool,DISABLED_t_local)
+int main()
 {
     int num=2;
     std::vector<std::thread> tv;
@@ -21,4 +21,5 @@ GTEST_TEST(memory_pool,DISABLED_t_local)
     }
     for(int i=0;i<num;++i)
         tv[i].join();
+    return 0;
 }
