@@ -1,25 +1,22 @@
-#include <stdio.h>
+#include "gtest/gtest.h"
 #include <thread>
 #include <vector>
 #include "thread_cache.h"
+#include "central_cache.h"
+#include "common.h"
+#include "page_cache.h"
 
 using namespace memorypool;
-void run()
-{
-    ThreadCache& c=ThreadCache::GetInstance();
-    printf("%d %p\n",std::this_thread::get_id(),&c);
-}
 
-int main()
+GTEST_TEST(memory_pool,pcache_getspan)
 {
-    int num=2;
-    std::vector<std::thread> tv;
-    for(int i=0;i<num;++i)
-    {
-        std::thread t(&run);
-        tv.push_back(std::move(t));
-    }
-    for(int i=0;i<num;++i)
-        tv[i].join();
-    return 0;
+    PageCache& c=PageCache::GetInstance();
+    Span* s1=c.GetSpan(1);
+    Span* s2=c.GetSpan(2);
+    Span* s3=c.GetSpan(3);
+    Span* s4=c.GetSpan(4);
+    EXPECT_EQ(s1->page_counts,1);
+    EXPECT_EQ(s2->id,s1->id+s1->page_counts);
+    EXPECT_EQ(s3->id,s2->id+s2->page_counts);
+    EXPECT_EQ(s4->id,s3->id+s3->page_counts);
 }

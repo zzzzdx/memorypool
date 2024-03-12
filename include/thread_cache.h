@@ -1,3 +1,4 @@
+#pragma once
 
 //ThreadCache只负责缓存空闲块链表，申请和释放交给CentralCache
 

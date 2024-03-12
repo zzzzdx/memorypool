@@ -1,3 +1,10 @@
+#pragma once
+#include "common.h"
+#include <unordered_map>
+#include <sys/mman.h>
+#include <mutex>
+
+using namespace memorypool;
 namespace memorypool
 {
 
@@ -8,9 +15,22 @@ namespace memorypool
 class PageCache
 {
 private:
+    SpanList _list_container[MAX_SPAN_SIZE];
+    //Span*如何释放？
+    std::unordered_map<PageId,Span*> _id_span_map;
+    std::mutex _lock;
+private:
     PageCache(){}
+    void* GetPages(int page_num);
+    void FreePages(void* origin_page_ptr,size_t size);
+    //用无锁版本解决递归不可重入锁
+    Span* GetSpanNoLock(size_t page_num);
 public:
     static PageCache& GetInstance();
+    Span* GetBigObj(int size);
+    void FreeBigObj(void* ptr);
+    Span* GetSpan(size_t page_num);
+    void FreeSpan(Span* span);
 };
 
 }
