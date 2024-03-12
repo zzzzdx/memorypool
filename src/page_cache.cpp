@@ -23,7 +23,7 @@ void PageCache::FreePages(void *origin_page_ptr,size_t size){
 Span *PageCache::GetSpanNoLock(size_t page_num)
 {
     if(page_num>MAX_SPAN_SIZE)
-        return nullptr;
+        page_num=MAX_SPAN_SIZE;
     for(int i=page_num-1;i<MAX_SPAN_SIZE;++i)
     {
         SpanList& list=_list_container[i];
@@ -51,7 +51,7 @@ Span *PageCache::GetSpanNoLock(size_t page_num)
 
     void* pages=GetPages(MAX_SPAN_SIZE);
     Span* span=new Span;
-    span->id=(PageId)pages<<12;
+    span->id=(PageId)pages>>12;
     span->page_counts=MAX_SPAN_SIZE;
     _list_container[MAX_SPAN_SIZE-1].PushBack(span);
     for(PageId i=span->id;i<span->page_counts+span->id;++i)

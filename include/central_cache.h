@@ -1,4 +1,5 @@
 #pragma once
+#include "common.h"
 namespace memorypool
 {
 
@@ -9,9 +10,18 @@ namespace memorypool
 class CentralCache
 {
 private:
+    //block size的划分与ThreadCache相同
+    SpanList _list_container[FREELIST_COUNTS];
+
+private:
     CentralCache(){}
+    void GetSpan(size_t block_size,size_t page_num);
 
 public:
     static CentralCache& GetInstance();
+
+    //end不是尾后，MAX_SPAN_SIZE保证至少返回一个block，len只是建议值
+    //每个span内部有自己的空闲链表,GetFreeList能融合各span的空闲链表向ThreadCache分配，在释放时归还各自span
+    void GetFreeList(void*& start,void*& end,size_t size,size_t len);
 };
 }

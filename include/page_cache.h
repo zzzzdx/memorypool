@@ -31,6 +31,8 @@ public:
     void FreeBigObj(void* ptr);
     Span* GetSpan(size_t page_num);
     void FreeSpan(Span* span);
+
+    Span* GetSpanFromBlock(void* block);
 };
 
 }

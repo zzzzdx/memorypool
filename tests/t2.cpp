@@ -8,15 +8,14 @@
 
 using namespace memorypool;
 
-GTEST_TEST(memory_pool,pcache_getspan)
+GTEST_TEST(memory_pool,ccahe_freelist)
 {
-    PageCache& c=PageCache::GetInstance();
-    Span* s1=c.GetSpan(1);
-    Span* s2=c.GetSpan(2);
-    Span* s3=c.GetSpan(3);
-    Span* s4=c.GetSpan(4);
-    EXPECT_EQ(s1->page_counts,1);
-    EXPECT_EQ(s2->id,s1->id+s1->page_counts);
-    EXPECT_EQ(s3->id,s2->id+s2->page_counts);
-    EXPECT_EQ(s4->id,s3->id+s3->page_counts);
+    CentralCache& c=CentralCache::GetInstance();
+    void* start;
+    void* end;
+    c.GetFreeList(start,end,1<<10,4);
+    EXPECT_EQ(3,((char*)end-(char*)start)>>10);
+    for(int i=0;i<3;++i)
+        start=GetNextBlock(start);
+    EXPECT_EQ(start,end);
 }
