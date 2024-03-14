@@ -26,7 +26,7 @@ Span *PageCache::GetSpanNoLock(size_t page_num)
         page_num=MAX_SPAN_SIZE;
     for(int i=page_num-1;i<MAX_SPAN_SIZE;++i)
     {
-        SpanList& list=_list_container[i];
+        SpanList& list=_span_lists[i];
         if(list.Size())
         {
             Span* ret=list.Begin();
@@ -43,7 +43,7 @@ Span *PageCache::GetSpanNoLock(size_t page_num)
 
                 left->id+=page_num;
                 left->page_counts-=page_num;
-                _list_container[left->page_counts-1].PushBack(left);
+                _span_lists[left->page_counts-1].PushBack(left);
             }
             return ret;
         }
@@ -53,7 +53,7 @@ Span *PageCache::GetSpanNoLock(size_t page_num)
     Span* span=new Span;
     span->id=(PageId)pages>>12;
     span->page_counts=MAX_SPAN_SIZE;
-    _list_container[MAX_SPAN_SIZE-1].PushBack(span);
+    _span_lists[MAX_SPAN_SIZE-1].PushBack(span);
     for(PageId i=span->id;i<span->page_counts+span->id;++i)
         _id_span_map[i]=span;
     return GetSpanNoLock(page_num);
@@ -68,7 +68,7 @@ PageCache &PageCache::GetInstance()
 Span *PageCache::GetBigObj(int size)
 {
     assert(size>=BIG_OBJ_SIZE);
-    int page_num=SizeCalc::RoundUp(size,12)>>12;
+    int page_num=SizeCalc::Align(size,12)>>12;
     void* p=GetPages(page_num);
     Span* span = new Span;
     span->id=(PageId)p>>12;

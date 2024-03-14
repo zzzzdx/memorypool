@@ -31,9 +31,17 @@ inline void* GetNextBlock(void* item){ return *(void**)item;}
 class SizeCalc
 {
 public:
-    static size_t RoundUp(size_t size,size_t align){
+    static size_t Align(size_t size,size_t align)
+    {
         size_t a=(1<<align)-1;
         return (size+a)&(~a);
+    }
+
+    static size_t RoundUp(size_t size)
+    {
+        if(size>1024) return Align(size,7);
+        else if(size>128) return Align(size,4);
+        else return Align(size,3);
     }
 
     //size对齐后所属空闲链表的下表
@@ -41,20 +49,56 @@ public:
     {
         if(size>1024)
         {
-            size_t off=RoundUp(size,7)-1024;
+            size_t off=RoundUp(size)-1024;
             return (off>>7)-1+72;
         }
         else if(size>128)
         {
-            size_t off=RoundUp(size,4)-128;
+            size_t off=RoundUp(size)-128;
             return (off>>4)-1+16;
         }
         else
         {
-            size_t off=RoundUp(size,3);
+            size_t off=RoundUp(size);
             return (off>>3)-1;
         }
     }
+};
+
+class FreeList
+{
+private:
+    void* _start=nullptr;
+    size_t _size=0;
+    size_t _max_size=0;
+public:
+    void Push(void* start,void* end,size_t size)
+    {
+        if(_start){
+            SetNextBlock(end,_start);
+            _start=start;
+        }
+        else
+            _start=start;
+        _size+=size;
+    }
+
+    void Push(void* item){ Push(item,item,1); }
+
+    void* Pop() {
+        void* ret=nullptr;
+        if(_start)
+        {
+            --_size;
+            ret=_start;
+            _start=GetNextBlock(_start);
+        }
+        return ret;
+    }
+
+    size_t Size(){return _size;}
+    size_t GetMax(){return _max_size;}
+    void IncMax(size_t inc){_max_size+=inc;}
 };
 
 //page整页用于空闲链表，span单独记录page信息
@@ -69,6 +113,7 @@ struct Span
     int use_counts=0;
     //空闲链表，nullptr表示用完
     void* freelist=nullptr;
+    size_t block_size=0;
 
     Span* prev=nullptr;
     Span* next=nullptr;

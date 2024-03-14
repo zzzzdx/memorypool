@@ -1,5 +1,7 @@
 #pragma once
 #include "common.h"
+#include <mutex>
+
 namespace memorypool
 {
 
@@ -11,7 +13,8 @@ class CentralCache
 {
 private:
     //block size的划分与ThreadCache相同
-    SpanList _list_container[FREELIST_COUNTS];
+    SpanList _span_lists[FREELIST_COUNTS];
+    std::mutex _lock;
 
 private:
     CentralCache(){}
@@ -22,6 +25,6 @@ public:
 
     //end不是尾后，MAX_SPAN_SIZE保证至少返回一个block，len只是建议值
     //每个span内部有自己的空闲链表,GetFreeList能融合各span的空闲链表向ThreadCache分配，在释放时归还各自span
-    void GetFreeList(void*& start,void*& end,size_t size,size_t len);
+    size_t GetFreeList(void*& start,void*& end,size_t size,size_t len);
 };
 }

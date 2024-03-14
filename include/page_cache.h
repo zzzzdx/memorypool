@@ -15,7 +15,7 @@ namespace memorypool
 class PageCache
 {
 private:
-    SpanList _list_container[MAX_SPAN_SIZE];
+    SpanList _span_lists[MAX_SPAN_SIZE];
     //Span*如何释放？
     std::unordered_map<PageId,Span*> _id_span_map;
     std::mutex _lock;
