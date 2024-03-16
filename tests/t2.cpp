@@ -4,41 +4,44 @@
 #include "thread_cache.h"
 #include "central_cache.h"
 #include "common.h"
-#include "page_cache.h"
+#include "page_heap.h"
 
 using namespace memorypool;
 
-GTEST_TEST(memory_pool,DISABLED_allocate)
+GTEST_TEST(memory_pool,deallocate)
 {
-    auto work=[](void** vec,int s)
+    auto work=[]()
     {
         ThreadCache& c=ThreadCache::GetInstance();
-        for(int i=0;i<512;++i)
+        void** vec=(void**)c.Allocate(4096);
+        for(int i=0;i<256;++i)
         {
-            vec[i+s]=c.Allocate(8);
-            *(int*)vec[i+s]=i+s;
+            vec[i]=c.Allocate(8);
+            *(int*)vec[i]=i;
         }
-        for(int i=0;i<512;++i)
-            c.Deallocate(vec[i+s]);
+        for(int i=256;i<512;++i)
+        {
+            vec[i]=c.Allocate(16);
+            *(int*)vec[i]=i;
+        }
+        
+        for(int i=0;i<512;++i){
+            EXPECT_EQ(i,*(int*)vec[i]);
+            c.Deallocate(vec[i]);
+        }
+        c.Deallocate(vec);
+        
     };
     
     CentralCache& cc=CentralCache::GetInstance();
-    void* vec[1024];
-    std::thread t1(work,vec,0);
-    std::thread t2(work,vec,512);
+    PageHeap& pc=PageHeap::GetInstance();
+    std::thread t1(work);
+    std::thread t2(work);
+    std::thread t3(work);
     t1.join();
     t2.join();
+    t3.join();
+    cc.Debug();
+    int a=1;
 }
 
-GTEST_TEST(memory_pool,deallocate)
-{
-    ThreadCache& c=ThreadCache::GetInstance();
-    CentralCache& cc=CentralCache::GetInstance();
-    void* vec[1536];
-    for(int i=0;i<1536;++i)
-    {
-        vec[i]=c.Allocate(8);
-    }
-    for(int i=0;i<1536;++i)
-        c.Deallocate(vec[i]);
-}

@@ -1,5 +1,5 @@
 #include "common.h"
-#include "page_cache.h"
+#include "page_heap.h"
 #include <assert.h>
 
 
@@ -9,18 +9,18 @@ namespace memorypool
 {
 
 
-void *PageCache::GetPages(int page_num){
+void *PageHeap::GetPages(int page_num){
     void* p=mmap(nullptr,4096*page_num,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0);
     if(p==nullptr)
         throw "mmap fail";
     return p;
 }
 
-void PageCache::FreePages(void *origin_page_ptr,size_t size){
+void PageHeap::FreePages(void *origin_page_ptr,size_t size){
     munmap(origin_page_ptr,size);
 }
 
-Span *PageCache::GetSpanNoLock(size_t page_num)
+Span *PageHeap::GetSpanNoLock(size_t page_num)
 {
     if(page_num>MAX_SPAN_SIZE)
         page_num=MAX_SPAN_SIZE;
@@ -59,13 +59,13 @@ Span *PageCache::GetSpanNoLock(size_t page_num)
     return GetSpanNoLock(page_num);
 }
 
-PageCache &PageCache::GetInstance()
+PageHeap &PageHeap::GetInstance()
 {
-    static PageCache page_cache;
+    static PageHeap page_cache;
     return page_cache;
 }
 
-Span *PageCache::GetBigObj(int size)
+Span *PageHeap::GetBigObj(int size)
 {
     assert(size>=BIG_OBJ_SIZE);
     int page_num=SizeCalc::Align(size,12)>>12;
@@ -78,7 +78,7 @@ Span *PageCache::GetBigObj(int size)
     _id_span_map.insert(std::pair<PageId,Span*>(span->id,span));
     return nullptr;
 }
-void PageCache::FreeBigObj(void *ptr)
+void PageHeap::FreeBigObj(void *ptr)
 {
     PageId id=(PageId)ptr>>12;
     size_t size;
@@ -94,12 +94,12 @@ void PageCache::FreeBigObj(void *ptr)
     
     FreePages(ptr,size);
 }
-Span *PageCache::GetSpan(size_t page_num)
+Span *PageHeap::GetSpan(size_t page_num)
 {
     std::lock_guard<std::mutex> guard(_lock);
     return GetSpanNoLock(page_num);
 }
-Span *PageCache::GetSpanFromBlock(void *block)
+Span *PageHeap::GetSpanFromBlock(void *block)
 {
     return _id_span_map[(PageId)block>>12];
 }

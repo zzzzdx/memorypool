@@ -1,5 +1,5 @@
 #include "central_cache.h"
-#include "page_cache.h"
+#include "page_heap.h"
 
 namespace memorypool
 {
@@ -7,8 +7,7 @@ namespace memorypool
 
 void CentralCache::GetSpan(size_t block_size, size_t page_num)
 {
-    SpanList& list=_span_lists[SizeCalc::Index(block_size)];
-    Span* span=PageCache::GetInstance().GetSpan(page_num);
+    Span* span=PageHeap::GetInstance().GetSpan(page_num);
     span->block_size=block_size;
     char* cur=(char*)(span->id<<12);
     char* end=(char*)((span->id+span->page_counts)<<12);
@@ -21,6 +20,8 @@ void CentralCache::GetSpan(size_t block_size, size_t page_num)
         cur+=block_size;
     }
     SetNextBlock(cur,nullptr);
+
+    SpanList& list=_span_lists[SizeCalc::Index(block_size)];
     list.PushFront(span);
 }
 
@@ -32,12 +33,10 @@ CentralCache &CentralCache::GetInstance()
 
 size_t CentralCache::GetFreeList(void *&start, void *&end, size_t size, size_t len)
 {
-    std::lock_guard<std::mutex> guard(_lock);
+    
     SpanList& list=_span_lists[SizeCalc::Index(size)];
-
-    //获取空span，并构建空闲链表
-    if(list.Size()==0)
-        GetSpan(size,SizeCalc::Align(size*len,12)>>12);
+    //注意锁的粒度，不需要全局锁
+    std::lock_guard<std::mutex> guard(list._lock);
 
     //保证空span永远在前,一个span用完才会取新的
     start=nullptr;
@@ -45,7 +44,9 @@ size_t CentralCache::GetFreeList(void *&start, void *&end, size_t size, size_t l
     while(start==nullptr)
     {
         Span* span=list.Begin();
-        if(span->freelist)
+        if(span==list.End() || span->freelist==nullptr)
+            GetSpan(size,SizeCalc::Align(size*len,12)>>12);
+        else
         {
             end=start=span->freelist;
             ++span->use_counts;
@@ -68,20 +69,19 @@ size_t CentralCache::GetFreeList(void *&start, void *&end, size_t size, size_t l
             }
             break;
         }
-        else
-            GetSpan(size,SizeCalc::Align(size*len,12)>>12);
     }
     return num;
 }
 
-void CentralCache::RelFreeList(void *start)
-{
-    std::lock_guard<std::mutex> guard(_lock);    
+void CentralCache::RelFreeList(void *start,size_t idx)
+{   
+    SpanList& list=_span_lists[idx];
+    std::lock_guard<std::mutex> guard(list._lock);
     //返回的空闲链表可能由多个span分配
     while(start)
     {
         void* next=GetNextBlock(start);
-        Span* span=PageCache::GetInstance().GetSpanFromBlock(start);
+        Span* span=PageHeap::GetInstance().GetSpanFromBlock(start);
         if(span)
         {
             --span->use_counts;
@@ -91,9 +91,11 @@ void CentralCache::RelFreeList(void *start)
             //处理span位置，同时判断是否释放
             if(span->use_counts==0)
             {
-                SpanList& list=_span_lists[SizeCalc::Index(span->block_size)];
                 list.Erase(span);
-                list.PushFront(span);
+                if(list.Begin()==list.End() || list.Begin()->freelist==nullptr)
+                    list.PushFront(span);
+                else
+                    list.Insert(list.Begin()->next,span);
             }
         }
         start=next;

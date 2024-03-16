@@ -1,5 +1,5 @@
 #include "thread_cache.h"
-#include "page_cache.h"
+#include "page_heap.h"
 namespace memorypool
 {
 ThreadCache::~ThreadCache()
@@ -8,7 +8,7 @@ ThreadCache::~ThreadCache()
     {
         FreeList& list=_free_lists[i];
         if(list.Start())
-            CentralCache::GetInstance().RelFreeList(list.Start());
+            CentralCache::GetInstance().RelFreeList(list.Start(),i);
     }
 }
 
@@ -35,18 +35,19 @@ void *ThreadCache::Allocate(size_t size)
 
 void ThreadCache::Deallocate(void *p)
 {
-    Span* span=PageCache::GetInstance().GetSpanFromBlock(p);
+    Span* span=PageHeap::GetInstance().GetSpanFromBlock(p);
     if(!span)
         return;
 
-    FreeList& list=_free_lists[SizeCalc::Index(span->block_size)];
+    size_t idx=SizeCalc::Index(span->block_size);
+    FreeList& list=_free_lists[idx];
     list.Push(p);
 
     //ThreadCache过大须释放
     if(list.Size()>(list.GetMax()<<1))
     {
         int rel_num=list.Size()-list.GetMax();
-        CentralCache::GetInstance().RelFreeList(list.Pop(rel_num));
+        CentralCache::GetInstance().RelFreeList(list.Pop(rel_num),idx);
         list.IncMax(-rel_num);
     }
 }

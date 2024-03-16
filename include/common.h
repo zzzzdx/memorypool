@@ -1,13 +1,14 @@
 #pragma once
 #include <stddef.h>
 #include <algorithm>
+#include <mutex>
 
 namespace memorypool
 {
 //超过2页,8k为大对象
-const int BIG_OBJ_SIZE=2<<14;
+const int BIG_OBJ_SIZE=1<<13;
 
-//PageCache管理的Span容纳最大页数,
+//PageHeap管理的Span容纳最大页数,
 //MAX_SPAN_SIZE >= BIG_OBJ_SIZE>>12 注意保证Span至少足以容纳一个小对象
 const int MAX_SPAN_SIZE=10;
 
@@ -163,5 +164,7 @@ public:
 private:
     Span head;
     int size=0;
+public:
+    std::mutex _lock;
 };
 }
