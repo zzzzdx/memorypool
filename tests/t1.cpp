@@ -88,3 +88,22 @@ GTEST_TEST(memory_pool,ccahe_freelist)
         start=GetNextBlock(start);
     EXPECT_EQ(start,end);
 }
+
+GTEST_TEST(memory_pool,freelist)
+{
+    FreeList l;
+    void* p[15];
+    for(int i=0;i<15;++i)
+        l.Push(p+i);
+    
+    for(int i=5;i>0;--i)
+    {
+        size_t size=0;
+        void* s=l.Pop(i);
+        while(s){
+            ++size;
+            s=GetNextBlock(s);
+        }
+        EXPECT_EQ(i,size);
+    }
+}

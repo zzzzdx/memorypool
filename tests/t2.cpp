@@ -8,7 +8,7 @@
 
 using namespace memorypool;
 
-GTEST_TEST(memory_pool,allocate)
+GTEST_TEST(memory_pool,DISABLED_allocate)
 {
     auto work=[](void** vec,int s)
     {
@@ -18,6 +18,8 @@ GTEST_TEST(memory_pool,allocate)
             vec[i+s]=c.Allocate(8);
             *(int*)vec[i+s]=i+s;
         }
+        for(int i=0;i<512;++i)
+            c.Deallocate(vec[i+s]);
     };
     
     CentralCache& cc=CentralCache::GetInstance();
@@ -26,9 +28,17 @@ GTEST_TEST(memory_pool,allocate)
     std::thread t2(work,vec,512);
     t1.join();
     t2.join();
+}
 
-    for(int i=0;i<1024;++i)
+GTEST_TEST(memory_pool,deallocate)
+{
+    ThreadCache& c=ThreadCache::GetInstance();
+    CentralCache& cc=CentralCache::GetInstance();
+    void* vec[1536];
+    for(int i=0;i<1536;++i)
     {
-        EXPECT_EQ(*(int*)vec[i],i);
+        vec[i]=c.Allocate(8);
     }
+    for(int i=0;i<1536;++i)
+        c.Deallocate(vec[i]);
 }

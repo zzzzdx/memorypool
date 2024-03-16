@@ -2,8 +2,6 @@
 #include "common.h"
 #include "central_cache.h"
 
-
-
 using namespace memorypool;
 namespace memorypool
 {
@@ -12,7 +10,7 @@ namespace memorypool
 class ThreadCache
 {
 public:
-    ~ThreadCache(){}
+    ~ThreadCache();
     static ThreadCache& GetInstance();
     void* Allocate(size_t size);
     void Deallocate(void* p);

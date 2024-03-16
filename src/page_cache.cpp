@@ -99,4 +99,8 @@ Span *PageCache::GetSpan(size_t page_num)
     std::lock_guard<std::mutex> guard(_lock);
     return GetSpanNoLock(page_num);
 }
+Span *PageCache::GetSpanFromBlock(void *block)
+{
+    return _id_span_map[(PageId)block>>12];
+}
 }

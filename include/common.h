@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <algorithm>
 
 namespace memorypool
 {
@@ -74,31 +75,37 @@ private:
 public:
     void Push(void* start,void* end,size_t size)
     {
-        if(_start){
-            SetNextBlock(end,_start);
-            _start=start;
-        }
-        else
-            _start=start;
+        SetNextBlock(end,_start);
+        _start=start;
         _size+=size;
     }
 
     void Push(void* item){ Push(item,item,1); }
 
-    void* Pop() {
-        void* ret=nullptr;
-        if(_start)
+    void* Pop() {return Pop(1);}
+
+    void* Pop(size_t size)
+    {
+        void* ret=_start;
+
+        if(ret)
         {
+            void* end=ret;
             --_size;
-            ret=_start;
-            _start=GetNextBlock(_start);
+            while(--size && GetNextBlock(end)){
+                --_size;
+                end=GetNextBlock(end);
+            }
+            _start=GetNextBlock(end);
+            SetNextBlock(end,nullptr);
         }
         return ret;
     }
 
     size_t Size(){return _size;}
     size_t GetMax(){return _max_size;}
-    void IncMax(size_t inc){_max_size+=inc;}
+    void IncMax(int inc){_max_size+=inc;}
+    void* Start(){return _start;}
 };
 
 //page整页用于空闲链表，span单独记录page信息
