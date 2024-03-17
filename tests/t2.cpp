@@ -38,10 +38,11 @@ GTEST_TEST(memory_pool,deallocate)
     std::thread t1(work);
     std::thread t2(work);
     std::thread t3(work);
+    std::thread t4(work);
     t1.join();
     t2.join();
     t3.join();
-    cc.Debug();
-    int a=1;
+    t4.join();
+    EXPECT_EQ(true,pc.FreeAllSpans());
 }
 

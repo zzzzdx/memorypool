@@ -23,6 +23,7 @@ private:
 
 private:
     CentralCache(){}
+    ~CentralCache();
     //注意不可重入，由外围加锁 
     void GetSpan(size_t block_size,size_t page_num);
 

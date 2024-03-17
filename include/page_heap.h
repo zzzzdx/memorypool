@@ -19,6 +19,7 @@ private:
     //Span*如何释放？
     std::unordered_map<PageId,Span*> _id_span_map;
     std::mutex _lock;
+    size_t _total_get=0;
 private:
     PageHeap(){}
     void* GetPages(int page_num);
@@ -33,6 +34,7 @@ public:
     void FreeSpan(Span* span);
 
     Span* GetSpanFromBlock(void* block);
+    bool FreeAllSpans();
 };
 
 }

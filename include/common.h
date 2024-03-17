@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <algorithm>
 #include <mutex>
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/rotating_file_sink.h"
 
 namespace memorypool
 {
@@ -67,6 +69,27 @@ public:
     }
 };
 
+class Logger
+{
+public:
+    static std::shared_ptr<spdlog::logger> GetInstance()
+    {
+        static Logger logger;
+        return logger._logger;
+    }
+
+private:
+    Logger()
+    {
+        _logger=spdlog::rotating_logger_mt("logger","./logger.txt",1048576 * 5,1);
+        _logger->set_pattern("[%Y-%m-%d %H:%M:%S] [%^%l%$] [thread %t] %v");
+        _logger->set_level(spdlog::level::debug);
+        _logger->debug("-----------start------------");
+    }
+
+    std::shared_ptr<spdlog::logger> _logger;
+};
+
 class FreeList
 {
 private:
@@ -113,6 +136,9 @@ public:
 //可以考虑建立page头，避免额外内存开销
 struct Span
 {
+    //munmap
+    bool start=false;
+    bool used=false;
     //起始页id
     PageId id;
     //连续页数量
@@ -146,6 +172,8 @@ public:
         item->next->prev=item->prev;
         item->prev=item->next=nullptr;   
         --size;
+        if(size<0)
+            Logger::GetInstance()->error("SpanList size {}",size);
     }
     void PushBack(Span* item){ Insert(&head,item); }
     void PushFront(Span* item){ Insert(head.next,item);}

@@ -3,7 +3,24 @@
 
 namespace memorypool
 {
-
+    
+CentralCache::~CentralCache()
+{
+    /*
+    for(int i=0;i<FREELIST_COUNTS;++i)
+    {
+        if(_span_lists[i].Size())
+        {
+            for(Span* span=_span_lists[i].Begin();span!=_span_lists[i].End();)
+            {
+                Span* next=span->next;
+                PageHeap::GetInstance().FreeSpan(span);
+            }
+                
+        }
+    }  
+    */
+}
 
 void CentralCache::GetSpan(size_t block_size, size_t page_num)
 {
@@ -88,14 +105,11 @@ void CentralCache::RelFreeList(void *start,size_t idx)
             SetNextBlock(start,span->freelist);
             span->freelist=start;
 
-            //处理span位置，同时判断是否释放
+            //判断是否释放
             if(span->use_counts==0)
             {
                 list.Erase(span);
-                if(list.Begin()==list.End() || list.Begin()->freelist==nullptr)
-                    list.PushFront(span);
-                else
-                    list.Insert(list.Begin()->next,span);
+                PageHeap::GetInstance().FreeSpan(span);
             }
         }
         start=next;
