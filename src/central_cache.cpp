@@ -104,7 +104,7 @@ void CentralCache::RelFreeList(void *start,size_t idx)
             --span->use_counts;
             SetNextBlock(start,span->freelist);
             span->freelist=start;
-
+                
             //判断是否释放
             if(span->use_counts==0)
             {

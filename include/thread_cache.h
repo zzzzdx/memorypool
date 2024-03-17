@@ -13,7 +13,7 @@ public:
     ~ThreadCache();
     static ThreadCache& GetInstance();
     void* Allocate(size_t size);
-    void Deallocate(void* p);
+    void Deallocate(void* p,size_t size);
 
 private:
     ThreadCache(){}

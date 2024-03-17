@@ -12,7 +12,7 @@ const int BIG_OBJ_SIZE=1<<13;
 
 //PageHeap管理的Span容纳最大页数,
 //MAX_SPAN_SIZE >= BIG_OBJ_SIZE>>12 注意保证Span至少足以容纳一个小对象
-const int MAX_SPAN_SIZE=10;
+const int MAX_SPAN_SIZE=20;
 
 // 注意空闲链表颗粒度的变化，较小对象的更细化，较大的更粗，
 // 保证常用的较小对象内存碎片少以及链表总数不会太多

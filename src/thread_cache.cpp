@@ -33,13 +33,9 @@ void *ThreadCache::Allocate(size_t size)
     return free_list.Pop();
 }
 
-void ThreadCache::Deallocate(void *p)
+void ThreadCache::Deallocate(void *p,size_t size)
 {
-    Span* span=PageHeap::GetInstance().GetSpanFromBlock(p);
-    if(!span)
-        return;
-
-    size_t idx=SizeCalc::Index(span->block_size);
+    size_t idx=SizeCalc::Index(size);
     FreeList& list=_free_lists[idx];
     list.Push(p);
 

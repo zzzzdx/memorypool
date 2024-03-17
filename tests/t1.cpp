@@ -124,13 +124,6 @@ GTEST_TEST(memory_pool,allocate)
             vec[i]=c.Allocate(16);
             *(int*)vec[i]=i;
         }
-        /*
-        for(int i=0;i<512;++i){
-            EXPECT_EQ(i,*(int*)vec[i]);
-            c.Deallocate(vec[i]);
-        }
-        c.Deallocate(vec);
-        */
     };
     
     CentralCache& cc=CentralCache::GetInstance();

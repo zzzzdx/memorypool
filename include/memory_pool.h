@@ -21,7 +21,7 @@ inline void Deallocate(void* p)
         return;
     
     if(span->block_size<BIG_OBJ_SIZE)
-        ThreadCache::GetInstance().Deallocate(p);
+        ThreadCache::GetInstance().Deallocate(p,span->block_size);
     else
         PageHeap::GetInstance().FreeBigObj(p);
 }

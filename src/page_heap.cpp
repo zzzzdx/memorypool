@@ -82,7 +82,7 @@ Span *PageHeap::GetBigObj(int size)
     span->id=(PageId)p>>12;
     span->page_counts=page_num;
 
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::shared_mutex> guard(_lock);
     _id_span_map.insert(std::pair<PageId,Span*>(span->id,span));
     return nullptr;
 }
@@ -92,7 +92,7 @@ void PageHeap::FreeBigObj(void *ptr)
     size_t size;
 
     {
-        std::lock_guard<std::mutex> guard(_lock);
+        std::lock_guard<std::shared_mutex> guard(_lock);
         auto itr=_id_span_map.find(id);
         if(itr==_id_span_map.end())
             return;
@@ -105,16 +105,17 @@ void PageHeap::FreeBigObj(void *ptr)
 
 Span *PageHeap::GetSpan(size_t page_num)
 {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::shared_mutex> guard(_lock);
     return GetSpanNoLock(page_num);
 }
 
 void PageHeap::FreeSpan(Span *span)
 {
     //Logger::GetInstance()->debug("FreeSpan free {} pages",span->page_counts);
+    
     //每个空span都会尝试合并，只需前后合并一次即可
     //向前合并
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::shared_mutex> guard(_lock);
     span->used=false;
     if(!span->start)
     {
@@ -152,7 +153,7 @@ void PageHeap::FreeSpan(Span *span)
             delete next_span;
         }
     }
-
+    
     SpanList& list=_span_lists[span->page_counts-1];
     list.PushBack(span);
     
@@ -160,7 +161,7 @@ void PageHeap::FreeSpan(Span *span)
 
 Span *PageHeap::GetSpanFromBlock(void *block)
 {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::shared_lock<std::shared_mutex> guard(_lock);
     return _id_span_map[(PageId)block>>12];
 }
 bool PageHeap::FreeAllSpans()
