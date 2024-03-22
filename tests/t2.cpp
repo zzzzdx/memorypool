@@ -6,6 +6,7 @@
 #include "common.h"
 #include "page_heap.h"
 #include "memory_pool.h"
+#include <array>
 
 using namespace memorypool;
 
@@ -92,6 +93,7 @@ void AllocateTest(int works,std::vector<int> sizes,int rounds)
     }
     end=clock();
     PageHeap& ph=PageHeap::GetInstance();
+    EXPECT_EQ(ph.FreeAllSpans(),true);
     printf("isfree %d\n",ph.FreeAllSpans());
     printf("use time %ld\n",end-start);
 }
@@ -99,5 +101,14 @@ void AllocateTest(int works,std::vector<int> sizes,int rounds)
 GTEST_TEST(memory_pool,m_deallocate)
 {
     AllocateTest(5,{8,32,48},3);
+}
+
+GTEST_TEST(memory_pool,DISABLED_test)
+{
+    auto a=::operator new(5);
+    std::allocator<int> b;
+    std::vector<int> v;
+    v.push_back(1);
+    std::array<int,5> c;
 }
 

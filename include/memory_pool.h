@@ -3,6 +3,11 @@
 #include "thread_cache.h"
 #include "page_heap.h"
 
+//内存池的使用
+//1.替代malloc，free族
+//2.构建allocator用于容器
+//3.重载operator new针对某类型
+
 namespace memorypool
 {
 

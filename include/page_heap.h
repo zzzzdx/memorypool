@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <mutex>
 #include <shared_mutex>
+#include "sys_alloc.h"
 
 using namespace memorypool;
 namespace memorypool
@@ -21,9 +22,10 @@ private:
     std::unordered_map<PageId,Span*> _id_span_map;
     std::shared_mutex _lock;
     size_t _total_get=0;
+    SampleAlloc<Span> _span_alloc;
+
 private:
     PageHeap(){}
-    void* GetPages(int page_num);
     void FreePages(void* origin_page_ptr,size_t size);
     //用无锁版本解决递归不可重入锁
     Span* GetSpanNoLock(size_t page_num);
@@ -36,6 +38,7 @@ public:
 
     Span* GetSpanFromBlock(void* block);
     bool FreeAllSpans();
+    size_t SpanUsed(){return _span_alloc.Used();}
 };
 
 }

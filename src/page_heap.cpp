@@ -10,16 +10,10 @@ namespace memorypool
 {
 
 
-void *PageHeap::GetPages(int page_num){
-    void* p=mmap(nullptr,4096*page_num,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0);
-    if(p==nullptr)
-        throw "mmap fail";
-    ++_total_get;
-    return p;
-}
 
 void PageHeap::FreePages(void *origin_page_ptr,size_t size){
     munmap(origin_page_ptr,size);
+    
 }
 
 Span *PageHeap::GetSpanNoLock(size_t page_num)
@@ -37,7 +31,7 @@ Span *PageHeap::GetSpanNoLock(size_t page_num)
             {
                 Span* left=ret;
 
-                ret=new Span;
+                ret=_span_alloc.Allocate();
                 ret->id=left->id;
                 ret->start=left->start;
                 ret->page_counts=page_num;
@@ -55,9 +49,10 @@ Span *PageHeap::GetSpanNoLock(size_t page_num)
         }
     }
 
-    void* pages=GetPages(MAX_SPAN_SIZE);
+    void* pages=Mmap(MAX_SPAN_SIZE);
+    ++_total_get;
     //Logger::GetInstance()->debug("GetSpanNoLock get {} pages",MAX_SPAN_SIZE);
-    Span* span=new Span;
+    Span* span=_span_alloc.Allocate();
     span->start=true;
     span->id=(PageId)pages>>12;
     span->page_counts=MAX_SPAN_SIZE;
@@ -77,8 +72,8 @@ Span *PageHeap::GetBigObj(int size)
 {
     assert(size>=BIG_OBJ_SIZE);
     int page_num=SizeCalc::Align(size,12)>>12;
-    void* p=GetPages(page_num);
-    Span* span = new Span;
+    void* p=Mmap(page_num);
+    Span* span = _span_alloc.Allocate();
     span->id=(PageId)p>>12;
     span->page_counts=page_num;
 
@@ -90,16 +85,19 @@ void PageHeap::FreeBigObj(void *ptr)
 {
     PageId id=(PageId)ptr>>12;
     size_t size;
+    Span* span;
 
     {
         std::lock_guard<std::shared_mutex> guard(_lock);
         auto itr=_id_span_map.find(id);
         if(itr==_id_span_map.end())
             return;
-        size=itr->second->page_counts<<12;
+        span=itr->second;
+        size=span->page_counts<<12;
         _id_span_map.erase(itr);
     }
     
+    _span_alloc.Deallocate(span);
     FreePages(ptr,size);
 }
 
@@ -132,7 +130,8 @@ void PageHeap::FreeSpan(Span *span)
             span->start=prev_span->start;
             for(PageId i=prev_span->id;i<prev_span->page_counts+prev_span->id;++i)
                 _id_span_map[i]=span;
-            delete prev_span;
+            
+            _span_alloc.Deallocate(prev_span);
         }
     }
 
@@ -150,7 +149,8 @@ void PageHeap::FreeSpan(Span *span)
             span->page_counts+=next_span->page_counts;
             for(PageId i=next_span->id;i<next_span->id+next_span->page_counts;++i)
                 _id_span_map[i]=span;
-            delete next_span;
+            
+            _span_alloc.Deallocate(next_span);
         }
     }
     
