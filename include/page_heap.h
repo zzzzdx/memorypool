@@ -5,6 +5,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include "sys_alloc.h"
+#include "page_map.h"
 
 using namespace memorypool;
 namespace memorypool
@@ -18,11 +19,10 @@ class PageHeap
 {
 private:
     SpanList _span_lists[MAX_SPAN_SIZE];
-    //Span*如何释放？
-    std::unordered_map<PageId,Span*> _id_span_map;
     std::shared_mutex _lock;
     size_t _total_get=0;
     SampleAlloc<Span> _span_alloc;
+    PageMap<36> _id_span_map;
 
 private:
     PageHeap(){}
@@ -38,7 +38,7 @@ public:
 
     Span* GetSpanFromBlock(void* block);
     bool FreeAllSpans();
-    size_t SpanUsed(){return _span_alloc.Used();}
+    bool FreeAllSample(){return _span_alloc.Used()==_span_lists[MAX_SPAN_SIZE-1].Size();}
 };
 
 }

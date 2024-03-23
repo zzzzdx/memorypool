@@ -36,7 +36,7 @@ Span *PageHeap::GetSpanNoLock(size_t page_num)
                 ret->start=left->start;
                 ret->page_counts=page_num;
                 for(PageId i=ret->id;i<ret->page_counts+ret->id;++i)
-                    _id_span_map[i]=ret;
+                    _id_span_map.insert(i,ret);
 
                 left->id+=page_num;
                 left->start=false;
@@ -58,7 +58,7 @@ Span *PageHeap::GetSpanNoLock(size_t page_num)
     span->page_counts=MAX_SPAN_SIZE;
     _span_lists[MAX_SPAN_SIZE-1].PushBack(span);
     for(PageId i=span->id;i<span->page_counts+span->id;++i)
-        _id_span_map[i]=span;
+        _id_span_map.insert(i,span);
     return GetSpanNoLock(page_num);
 }
 
@@ -73,31 +73,28 @@ Span *PageHeap::GetBigObj(int size)
     assert(size>=BIG_OBJ_SIZE);
     int page_num=SizeCalc::Align(size,12)>>12;
     void* p=Mmap(page_num);
+
+    std::lock_guard<std::shared_mutex> guard(_lock);
     Span* span = _span_alloc.Allocate();
     span->id=(PageId)p>>12;
     span->page_counts=page_num;
-
-    std::lock_guard<std::shared_mutex> guard(_lock);
-    _id_span_map.insert(std::pair<PageId,Span*>(span->id,span));
+    _id_span_map.insert(span->id,span);
     return nullptr;
 }
 void PageHeap::FreeBigObj(void *ptr)
 {
     PageId id=(PageId)ptr>>12;
     size_t size;
-    Span* span;
 
     {
         std::lock_guard<std::shared_mutex> guard(_lock);
-        auto itr=_id_span_map.find(id);
-        if(itr==_id_span_map.end())
+        Span* span=_id_span_map.find(id);
+        if(span==nullptr)
             return;
-        span=itr->second;
         size=span->page_counts<<12;
-        _id_span_map.erase(itr);
+        _span_alloc.Deallocate(span);
     }
     
-    _span_alloc.Deallocate(span);
     FreePages(ptr,size);
 }
 
@@ -118,10 +115,9 @@ void PageHeap::FreeSpan(Span *span)
     if(!span->start)
     {
         PageId prev_id=span->id-1;
-        auto itr=_id_span_map.find(prev_id);
-        if(itr!=_id_span_map.end() && itr->second->used==false)
+        Span* prev_span=_id_span_map.find(prev_id);
+        if(prev_span && prev_span->used==false)
         {
-            Span* prev_span=itr->second;
             SpanList& list=_span_lists[prev_span->page_counts-1];
             list.Erase(prev_span);
 
@@ -129,7 +125,7 @@ void PageHeap::FreeSpan(Span *span)
             span->page_counts+=prev_span->page_counts;
             span->start=prev_span->start;
             for(PageId i=prev_span->id;i<prev_span->page_counts+prev_span->id;++i)
-                _id_span_map[i]=span;
+                _id_span_map.insert(i,span);
             
             _span_alloc.Deallocate(prev_span);
         }
@@ -139,16 +135,15 @@ void PageHeap::FreeSpan(Span *span)
     if(!(span->start && span->page_counts==MAX_SPAN_SIZE))
     {
         PageId next_id=span->id+span->page_counts;
-        auto itr=_id_span_map.find(next_id);
-        if(itr!=_id_span_map.end() && itr->second->used==false && itr->second->start==false)
+        Span* next_span=_id_span_map.find(next_id);
+        if(next_span && next_span->used==false && next_span->start==false)
         {
-            Span* next_span=itr->second;
             SpanList& list=_span_lists[next_span->page_counts-1];
             list.Erase(next_span);
 
             span->page_counts+=next_span->page_counts;
             for(PageId i=next_span->id;i<next_span->id+next_span->page_counts;++i)
-                _id_span_map[i]=span;
+                _id_span_map.insert(i,span);
             
             _span_alloc.Deallocate(next_span);
         }
@@ -162,7 +157,7 @@ void PageHeap::FreeSpan(Span *span)
 Span *PageHeap::GetSpanFromBlock(void *block)
 {
     std::shared_lock<std::shared_mutex> guard(_lock);
-    return _id_span_map[(PageId)block>>12];
+    return _id_span_map.find((PageId)block>>12);
 }
 bool PageHeap::FreeAllSpans()
 {

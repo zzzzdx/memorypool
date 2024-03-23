@@ -14,6 +14,7 @@ if(p==nullptr)
 return p;
 }
 
+//线性管理虚拟内存，用于元数据，只申请不释放
 class Arena
 {
 public:

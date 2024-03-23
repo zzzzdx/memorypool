@@ -137,3 +137,64 @@ GTEST_TEST(memory_pool,allocate)
     cc.Debug();
     int a=1;
 }
+
+GTEST_TEST(memory_pool,DISABLED_deallocate)
+{
+    auto work=[]()
+    {
+        ThreadCache& c=ThreadCache::GetInstance();
+        void** vec=(void**)c.Allocate(4096);
+        for(int i=0;i<256;++i)
+        {
+            vec[i]=c.Allocate(8);
+            *(int*)vec[i]=i;
+        }
+        for(int i=256;i<512;++i)
+        {
+            vec[i]=c.Allocate(16);
+            *(int*)vec[i]=i;
+        }
+        
+        for(int i=0;i<512;++i){
+            EXPECT_EQ(i,*(int*)vec[i]);
+            int size=8;
+            if(i>=256)
+                size=16;
+            c.Deallocate(vec[i],size);
+        }
+        c.Deallocate(vec,4096);
+        
+    };
+    
+    CentralCache& cc=CentralCache::GetInstance();
+    PageHeap& pc=PageHeap::GetInstance();
+    std::thread t1(work);
+    std::thread t2(work);
+    std::thread t3(work);
+    std::thread t4(work);
+    std::thread t5(work);
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+    EXPECT_EQ(true,pc.FreeAllSpans());
+}
+
+GTEST_TEST(memory_pool,pagemap)
+{
+    PageMap<36> m;
+    int size=128;
+    for(int i=0;i<size;++i)
+    {
+        size_t id=i<<12;
+        m.insert(id,(Span*)id);
+    }
+        
+    for(int i=0;i<size;++i)
+    {
+        size_t id=i<<12;
+        size_t res=(size_t)m.find(id);
+        EXPECT_EQ(res,id);
+    }
+}
