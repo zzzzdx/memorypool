@@ -67,6 +67,16 @@ public:
             return (off>>3)-1;
         }
     }
+
+    static size_t NumToMove(size_t size)
+    {
+        if(size>=1024)
+            return 8;
+        else if(size>=128)
+            return 16;
+        else
+            return 32;
+    }
 };
 
 class Logger
@@ -95,7 +105,7 @@ class FreeList
 private:
     void* _start=nullptr;
     size_t _size=0;
-    size_t _max_size=0;
+    size_t _max_size=1;
 public:
     void Push(void* start,void* end,size_t size)
     {

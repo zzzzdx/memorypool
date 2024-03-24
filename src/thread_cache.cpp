@@ -62,5 +62,11 @@ size_t ThreadCache::NumForSize(size_t size)
 
     num=std::min(num,max_size);
     return num;
+    /*
+    FreeList& free_list=_free_lists[SizeCalc::Index(size)];
+    size_t num=std::min(free_list.GetMax(),SizeCalc::NumToMove(SizeCalc::RoundUp(size)));
+    return num;
+}
+    */
 }
 }
