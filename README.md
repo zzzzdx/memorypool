@@ -6,6 +6,8 @@ commit_id 674ee53f07374b715e134a4bf210d3746a1712c3
 
 tcmalloc采用三级缓存,小对象从ThreadCache获取，大对象从PageAllocator获取。
 
+与linux内存内存管理类似，PageHeap简化版伙伴系统，TransferCacheManager类似slab分配算法，TransferCache类似kmem_cache负责固定大小对象分配与释放，Span与slab类似管理连续页，形成空闲链表或数组。
+
 ## PageAllocator
 PageAllocator负责分配Span(管理连续n个页)，类似代理真正的工作由PageHeap或HugePageAwareAllocator负责。单例，定义在static_var.h。
 
