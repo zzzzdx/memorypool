@@ -1,28 +1,48 @@
 #include "memory_pool.h"
 #include <stdio.h>
+#include <memory>
+#include <vector>
+#include <mutex>
 
-using namespace memorypool;
+class F
+{
+public:
+    F(int a){printf("F\n");}
+    F(const F& f){printf("copy F\n");}
+    F(F&& f){printf("move F\n");}
+    ~F(){printf("dis F\n");}
+};
 
-extern "C" {
-    void* m_malloc(size_t size) noexcept{
-        return Allocate(size);
-    }
+class C:public F
+{
+public:
+    C():F(1){printf("C\n");}
+};
 
-    void m_free(void* ptr) noexcept{
-        Deallocate(ptr);
-    }
-
+F p(int i){
+    F a(1);
+    F b(2);
+    if(i)
+        return a;
+    else
+        return b;
 }
 
-void* malloc(size_t size) noexcept __attribute__((alias("m_malloc"), visibility("default")));
-void free(void* ptr) noexcept __attribute__((alias("m_free"), visibility("default")));
- 
+std::mutex lock;
+
+void work(){
+    int a;
+    std::lock_guard<std::mutex> guard(lock);
+    printf("%p\n",&a);
+}
+
 int main(int argc, char **argv)
 {
-    //printf("hello\n");
-    //puts("hello\n");
-    write(1,"world",5);
-    void* p=malloc(5);
-    free(p);
+    std::vector<std::thread> t;
+    work();
+    for(int i=0;i<3;++i)
+        t.push_back(std::thread(work));
+    for(auto& i:t)
+        i.join();
     return 0;
 }

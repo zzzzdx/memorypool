@@ -79,6 +79,7 @@ public:
     }
 };
 
+//只用于调试，否则malloc递归
 class Logger
 {
 public:
