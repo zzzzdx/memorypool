@@ -68,7 +68,7 @@ PageHeap &PageHeap::GetInstance()
     return page_cache;
 }
 
-Span *PageHeap::GetBigObj(int size)
+void *PageHeap::GetBigObj(int size)
 {
     assert(size>=BIG_OBJ_SIZE);
     int page_num=SizeCalc::Align(size,12)>>12;
@@ -79,7 +79,7 @@ Span *PageHeap::GetBigObj(int size)
     span->id=(PageId)p>>12;
     span->page_counts=page_num;
     _id_span_map.insert(span->id,span);
-    return nullptr;
+    return p;
 }
 void PageHeap::FreeBigObj(void *ptr)
 {

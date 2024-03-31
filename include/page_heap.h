@@ -31,7 +31,7 @@ private:
     Span* GetSpanNoLock(size_t page_num);
 public:
     static PageHeap& GetInstance();
-    Span* GetBigObj(int size);
+    void* GetBigObj(int size);
     void FreeBigObj(void* ptr);
     Span* GetSpan(size_t page_num);
     void FreeSpan(Span* span);
