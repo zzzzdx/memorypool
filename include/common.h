@@ -24,6 +24,9 @@ const int MAX_SPAN_SIZE=20;
 //管理空闲链表个数即空闲块尺寸个数
 const int FREELIST_COUNTS=128;
 
+//单次移动空闲块最大个数
+const int MAX_BLOCK_MOVE=64;
+
 
 //页地址右移
 typedef unsigned long long PageId;
@@ -108,33 +111,32 @@ private:
     size_t _size=0;
     size_t _max_size=1;
 public:
-    void Push(void* start,void* end,size_t size)
+    void Push(void** batch,size_t size)
     {
-        SetNextBlock(end,_start);
-        _start=start;
-        _size+=size;
+        for(int i=0;i<size;++i)
+        {
+            SetNextBlock(batch[i],_start);
+            _start=batch[i];
+            ++_size;
+        }
     }
 
-    void Push(void* item){ Push(item,item,1); }
+    void Push(void* item){ Push(&item,1); }
 
-    void* Pop() {return Pop(1);}
+    bool Pop(void** ret) {return Pop(ret,1)==1;}
 
-    void* Pop(size_t size)
+    size_t Pop(void** batch,size_t size)
     {
-        void* ret=_start;
-
-        if(ret)
+        size_t i=0;
+        for(;i<size;++i)
         {
-            void* end=ret;
+            if(_start==nullptr)
+                break;
+            batch[i]=_start;
+            _start=GetNextBlock(_start);
             --_size;
-            while(--size && GetNextBlock(end)){
-                --_size;
-                end=GetNextBlock(end);
-            }
-            _start=GetNextBlock(end);
-            SetNextBlock(end,nullptr);
         }
-        return ret;
+        return i;
     }
 
     size_t Size(){return _size;}

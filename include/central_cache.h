@@ -32,9 +32,9 @@ public:
 
     //end不是尾后，MAX_SPAN_SIZE保证至少返回一个block，len只是建议值
     //每个span内部有自己的空闲链表,GetFreeList能融合各span的空闲链表向ThreadCache分配，在释放时归还各自span
-    size_t GetFreeList(void*& start,void*& end,size_t size,size_t len);
+    size_t GetFreeList(void** batch,size_t size,size_t len);
 
-    void RelFreeList(void* start,size_t idx);
+    void RelFreeList(void** batch,size_t len, size_t idx);
     void Debug(){
         for(int i=0;i<FREELIST_COUNTS;++i)
             if(_span_lists[i].Size())

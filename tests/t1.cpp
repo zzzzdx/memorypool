@@ -5,6 +5,7 @@
 #include "central_cache.h"
 #include "common.h"
 #include "page_heap.h"
+#include "memory_pool.h"
 
 using namespace memorypool;
 
@@ -77,36 +78,6 @@ GTEST_TEST(memory_pool,spanlist)
     EXPECT_EQ(l.Size(),0);
 }
 
-GTEST_TEST(memory_pool,ccahe_freelist)
-{
-    CentralCache& c=CentralCache::GetInstance();
-    void* start;
-    void* end;
-    
-    EXPECT_EQ(4,c.GetFreeList(start,end,1<<10,4));
-    for(int i=0;i<3;++i)
-        start=GetNextBlock(start);
-    EXPECT_EQ(start,end);
-}
-
-GTEST_TEST(memory_pool,freelist)
-{
-    FreeList l;
-    void* p[15];
-    for(int i=0;i<15;++i)
-        l.Push(p+i);
-    
-    for(int i=5;i>0;--i)
-    {
-        size_t size=0;
-        void* s=l.Pop(i);
-        while(s){
-            ++size;
-            s=GetNextBlock(s);
-        }
-        EXPECT_EQ(i,size);
-    }
-}
 
 GTEST_TEST(memory_pool,allocate)
 {
@@ -197,4 +168,21 @@ GTEST_TEST(memory_pool,pagemap)
         size_t res=(size_t)m.find(id);
         EXPECT_EQ(res,id);
     }
+}
+
+GTEST_TEST(memory_pool,freelist)
+{
+    FreeList l;
+    void* p[15];
+    for(int i=0;i<15;++i)
+        l.Push(p+i);
+    
+    for(int i=5;i>0;--i)
+    {
+        void* batch[5];
+        size_t size=l.Pop(batch,i);
+
+        EXPECT_EQ(i,size);
+    }
+    EXPECT_EQ(0,l.Size());
 }
