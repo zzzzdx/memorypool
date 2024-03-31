@@ -39,6 +39,15 @@ public:
     Span* GetSpanFromBlock(void* block);
     bool FreeAllSpans();
     bool FreeAllSample(){return _span_alloc.Used()==_span_lists[MAX_SPAN_SIZE-1].Size();}
+
+    void Debug(){
+        for(int i=0;i<MAX_SPAN_SIZE;++i)
+        {
+            if(_span_lists[i].Size()!=0)
+                printf("idx %d has %d,",i,_span_lists[i].Size());
+        }
+        printf("\n");
+    }
 };
 
 }

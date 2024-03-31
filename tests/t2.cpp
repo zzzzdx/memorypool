@@ -50,11 +50,13 @@ void AllocateTest(int works,std::vector<int> sizes,int rounds)
             t.join();
     }
     end=clock();
+    TransferCacheManager::GetInstance().clear();
     PageHeap& ph=PageHeap::GetInstance();
-    EXPECT_EQ(ph.FreeAllSpans(),true);
-    EXPECT_EQ(true,ph.FreeAllSample());
     printf("isfree %d\n",ph.FreeAllSpans());
     printf("use time %ld\n",end-start);
+    ph.Debug();
+    EXPECT_EQ(ph.FreeAllSpans(),true);
+    EXPECT_EQ(true,ph.FreeAllSample());
 }
 
 GTEST_TEST(memory_pool,m_deallocate)

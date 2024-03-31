@@ -7,6 +7,10 @@
 
 int main(int argc, char **argv)
 {
-    
+    void* a[10];
+    printf("%p\n",a);
+    printf("%p\n",&a+1);
+    printf("%p\n",a+1);
+    printf("%p\n",&a[1]);
     return 0;
 }

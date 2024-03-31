@@ -11,7 +11,7 @@ ThreadCache::~ThreadCache()
         {
             void* batch[MAX_BLOCK_MOVE];
             size_t num=list.Pop(batch,MAX_BLOCK_MOVE);
-            CentralCache::GetInstance().RelFreeList(batch,num,i);
+            TransferCacheManager::GetInstance().RelFreeList(batch,num,i);
         }
     }
 }
@@ -24,7 +24,8 @@ ThreadCache &ThreadCache::GetInstance()
 
 void *ThreadCache::Allocate(size_t size)
 {
-    FreeList& free_list=_free_lists[SizeCalc::Index(size)];
+    size_t idx=SizeCalc::Index(size);
+    FreeList& free_list=_free_lists[idx];
     if(free_list.Size())
     {
         void* ret;
@@ -33,8 +34,13 @@ void *ThreadCache::Allocate(size_t size)
     }
     
     size_t len=NumForSize(size);
+
+    //偶发栈溢出问题排查：
+    //综合考虑该函数和所有被调用函数
+    //首先考虑多线程，ThreadCache是thread_local概率不大
+    //其次考虑哪些是变量，排查哪些语句使用过函数形参，最后发现GetFreeList中len使用错误，导致batch溢出，覆盖调用栈底返回地址
     void* batch[MAX_BLOCK_MOVE];
-    len=CentralCache::GetInstance().GetFreeList(batch,SizeCalc::RoundUp(size),len);
+    len=TransferCacheManager::GetInstance().GetFreeList(batch,len,idx);
     free_list.Push(batch+1,len-1);
     if(free_list.GetMax()<512)
         free_list.IncMax(len);
@@ -53,7 +59,7 @@ void ThreadCache::Deallocate(void *p,size_t size)
         void* batch[MAX_BLOCK_MOVE];
         int num=list.Size()-list.GetMax();
         num=list.Pop(batch,num);
-        CentralCache::GetInstance().RelFreeList(batch,num,idx);
+        TransferCacheManager::GetInstance().RelFreeList(batch,num,idx);
         list.IncMax(-num);
     }
 }

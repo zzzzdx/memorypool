@@ -4,7 +4,7 @@
 namespace memorypool
 {
     
-CentralCache::~CentralCache()
+CentralFreeList::~CentralFreeList()
 {
     /*
     for(int i=0;i<FREELIST_COUNTS;++i)
@@ -22,7 +22,7 @@ CentralCache::~CentralCache()
     */
 }
 
-void CentralCache::GetSpan(size_t block_size, size_t page_num)
+void CentralFreeList::GetSpan(size_t block_size, size_t page_num)
 {
     Span* span=PageHeap::GetInstance().GetSpan(page_num);
     span->block_size=block_size;
@@ -37,34 +37,23 @@ void CentralCache::GetSpan(size_t block_size, size_t page_num)
         cur+=block_size;
     }
     SetNextBlock(cur,nullptr);
-
-    SpanList& list=_span_lists[SizeCalc::Index(block_size)];
-    list.PushFront(span);
+    _list.PushFront(span);
 }
 
-CentralCache &CentralCache::GetInstance()
+size_t CentralFreeList::GetFreeList(void** batch,size_t len)
 {
-    static CentralCache central_cache;
-    return central_cache;
-}
-
-size_t CentralCache::GetFreeList(void** batch,size_t size,size_t len)
-{
-    
-    SpanList& list=_span_lists[SizeCalc::Index(size)];
-    //注意锁的粒度，不需要全局锁
-    std::lock_guard<std::mutex> guard(list._lock);
-
+    std::lock_guard<std::mutex> guard(_lock);
+    size_t size=SizeCalc::Size(_idx);
     size_t i=0;
     while(i==0)
     {
-       Span* span=list.Begin();
-        if(span==list.End() || span->freelist==nullptr)
+       Span* span=_list.Begin();
+        if(span==_list.End() || span->freelist==nullptr)
             GetSpan(size,SizeCalc::Align(size*len,12)>>12);
         else
         {
             void* cur=span->freelist;
-            for(;i<size && cur!=nullptr;++i)
+            for(;i<len && cur!=nullptr;++i)
             {
                 ++span->use_counts;
                 batch[i]=cur;
@@ -73,8 +62,8 @@ size_t CentralCache::GetFreeList(void** batch,size_t size,size_t len)
 
             span->freelist=cur;
             if(span->freelist==nullptr){
-                list.Erase(span);
-                list.PushBack(span);
+                _list.Erase(span);
+                _list.PushBack(span);
             }
             break;
         } 
@@ -82,28 +71,69 @@ size_t CentralCache::GetFreeList(void** batch,size_t size,size_t len)
     return i;
 }
 
-void CentralCache::RelFreeList(void** batch,size_t len, size_t idx)
+void CentralFreeList::RelFreeList(void** batch,size_t len)
 {   
-    SpanList& list=_span_lists[idx];
-    std::lock_guard<std::mutex> guard(list._lock);
+    std::lock_guard<std::mutex> guard(_lock);
+    PageHeap& ph=PageHeap::GetInstance();
     //返回的空闲链表可能由多个span分配
     for(size_t i=0;i<len;++i)
     {
         void* cur=batch[i];
-        Span* span=PageHeap::GetInstance().GetSpanFromBlock(cur);
+        Span* span=ph.GetSpanFromBlock(cur);
         if(span)
         {
             --span->use_counts;
             SetNextBlock(cur,span->freelist);
             span->freelist=cur;
+            _list.Erase(span);
                 
             //判断是否释放
             if(span->use_counts==0)
-            {
-                list.Erase(span);
-                PageHeap::GetInstance().FreeSpan(span);
-            }
+                ph.FreeSpan(span);
+            else
+                _list.PushFront(span);
         }
     }
+}
+
+void *TransferCacheManager::Alloc(size_t size)
+{
+    return _arena.Alloc(size);
+}
+
+TransferCache::TransferCache(size_t idx, TransferCacheManager *manger, size_t capacity):_capacity(capacity),
+                    _slots(nullptr),_size(0),_freelist(idx),_manger(manger){
+        _slots=(void**)_manger->Alloc(_capacity*sizeof(void*));
+}
+
+size_t TransferCache::GetFreeList(void **batch, size_t len)
+{
+    std::lock_guard<std::mutex> guard(_lock);
+    size_t i=0;
+    while(_size>0 && len>0)
+    {
+        batch[i++]=_slots[--_size];
+        --len;
+    }
+
+    if(len)
+        i+=_freelist.GetFreeList(batch+i,len);
+
+    return i;
+}
+
+void TransferCache::RelFreeList(void **batch, size_t len)
+{
+    std::lock_guard<std::mutex> guard(_lock);
+    size_t i=0;
+
+    while(_size<_capacity && len>0)
+    {
+        _slots[_size++]=batch[i++];
+        --len;
+    }
+
+    if(len)
+        _freelist.RelFreeList(batch+i,len);
 }
 }

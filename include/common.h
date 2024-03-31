@@ -71,6 +71,16 @@ public:
         }
     }
 
+    static size_t Size(size_t idx)
+    {
+        if(idx>71)
+            return 1024+((idx-71)<<7);
+        else if(idx>15)
+            return 128+((idx-15)<<4);
+        else
+            return (idx+1)<<3;
+    }
+
     static size_t NumToMove(size_t size)
     {
         if(size>=1024)
