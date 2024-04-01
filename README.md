@@ -67,3 +67,31 @@ Arena一次至少从SystemAlloc申请128KB，线性管理，只分配不回收�
 ### PageHeapAllocator
 PageHeapAllocator模板类，用于元数据内存分配。内部有空闲链表和arena。从arena申请，释放到空闲链表。
 静态变量PageHeapAllocator<Span> span_allocator_、PageHeapAllocator<ThreadCache> threadcache_allocator_都使用arena_。
+
+# 内存池对比
+
+## 与ptmalloc，jemalloc对比
+参考：https://cloud.tencent.com/developer/article/2390348
+
+### ptmalloc
+glibc使用ptmalloc。ptmalloc包括主分配区（main arena），动态分配区（dynamic arena），主分配区与动态分配区用环形链表进行管理。
+
+每一个分配区利用互斥锁（mutex）使线程对于该分配区的访问互斥。每个进程只有一个主分配区，但可能存在多个动态分配区，ptmalloc根据系统对分配区的争用情况动态增加动态分配区的数量，分配区的数量一旦增加，就不会再减少了。主分配区在二进制启动时调用sbrk从heap区域分配内存，动态分配区则会直接调用mmap()分配内存。
+
+#### 问题
+1.如果后分配的内存先释放，无法及时归还系统。因为 ptmalloc 收缩内存是从top chunk开始,如果与top chunk相邻的chunk不能释放, top chunk以下的chunk都无法释放。
+
+2.内存不能在线程间移动，动态分配区只增不减，多线程使用内存不均衡将导致内存浪费
+
+3.每个chunk至少8字节的开销很大，且内存合并在chunk级别上
+
+4.加锁耗时，无论当前分区有无耗时，在内存分配和释放时，会首先加锁。
+
+![ptmalloc架构图](description/ptmalloc架构.png)
+![ptmalloc架构图](description/pt_bins.png)
+
+## linux slab分配器与伙伴系统
+
+### slab分配器
+
+![ptmalloc架构图](description/slab架构.png)
