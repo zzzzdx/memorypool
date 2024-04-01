@@ -33,7 +33,8 @@ void *ThreadCache::Allocate(size_t size)
             return ret;
     }
     
-    size_t len=NumForSize(size);
+    size_t batch_size=SizeCalc::NumToMove(size);
+    size_t len=std::min<int>(batch_size,free_list.GetMax());
 
     //偶发栈溢出问题排查：
     //综合考虑该函数和所有被调用函数
@@ -42,8 +43,9 @@ void *ThreadCache::Allocate(size_t size)
     void* batch[MAX_BLOCK_MOVE];
     len=TransferCacheManager::GetInstance().GetFreeList(batch,len,idx);
     free_list.Push(batch+1,len-1);
-    if(free_list.GetMax()<512)
-        free_list.IncMax(len);
+    
+    if(free_list.GetMax()<batch_size)
+        free_list.IncMax(1);
     return batch[0];
 }
 
@@ -53,34 +55,27 @@ void ThreadCache::Deallocate(void *p,size_t size)
     FreeList& list=_free_lists[idx];
     list.Push(p);
 
-    //ThreadCache过大须释放
-    if(list.Size()>(list.GetMax()<<1))
-    {
-        void* batch[MAX_BLOCK_MOVE];
-        int num=list.Size()-list.GetMax();
-        num=list.Pop(batch,num);
-        TransferCacheManager::GetInstance().RelFreeList(batch,num,idx);
-        list.IncMax(-num);
-    }
+    if(list.Size()>list.GetMax())
+        ListTooLong(list,size);
 }
 
-size_t ThreadCache::NumForSize(size_t size)
+void ThreadCache::ListTooLong(FreeList &list,size_t size)
 {
-    FreeList& free_list=_free_lists[SizeCalc::Index(size)];
-    size_t max_size=free_list.GetMax();
-    size_t num=BIG_OBJ_SIZE/size;
-    if(num<2)
-        num=2;
-    else if(num>MAX_BLOCK_MOVE)
-        num=MAX_BLOCK_MOVE;
-
-    num=std::min(num,max_size);
-    return num;
-    /*
-    FreeList& free_list=_free_lists[SizeCalc::Index(size)];
-    size_t num=std::min(free_list.GetMax(),SizeCalc::NumToMove(SizeCalc::RoundUp(size)));
-    return num;
-}
-    */
+    size_t batch_size=SizeCalc::NumToMove(size);
+    if(list.GetMax()>batch_size)
+    {
+        size_t idx=SizeCalc::Index(size);
+        if(list._overage<3){
+            ++list._overage;
+            return;
+        }
+        list._overage=0;
+        void* batch[MAX_BLOCK_MOVE];
+        list.Pop(batch,batch_size);
+        TransferCacheManager::GetInstance().RelFreeList(batch,batch_size,idx);
+        list.IncMax(-batch_size);
+    }
+    else
+        list.IncMax(1);
 }
 }

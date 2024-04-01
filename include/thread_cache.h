@@ -17,7 +17,7 @@ public:
 
 private:
     ThreadCache(){}
-    size_t NumForSize(size_t size);
+    void ListTooLong(FreeList& list,size_t size);
     FreeList _free_lists[FREELIST_COUNTS];
 };
 

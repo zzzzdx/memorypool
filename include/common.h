@@ -5,6 +5,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 
+
 namespace memorypool
 {
 //超过2页,8k为大对象
@@ -88,7 +89,7 @@ public:
         else if(size>=128)
             return 16;
         else
-            return 32;
+            return MAX_BLOCK_MOVE;
     }
 };
 
@@ -121,6 +122,7 @@ private:
     size_t _size=0;
     size_t _max_size=1;
 public:
+    size_t _overage=0;
     void Push(void** batch,size_t size)
     {
         for(int i=0;i<size;++i)
