@@ -91,7 +91,27 @@ glibc使用ptmalloc。ptmalloc包括主分配区（main arena），动态分配�
 ![ptmalloc架构图](description/pt_bins.png)
 
 ## linux slab分配器与伙伴系统
+参考资料：
+
+https://blog.csdn.net/lqy971966/article/details/112980005
+
+https://s3.shizhz.me/linux-mm/3.2-wu-li-nei-cun/3.2.4-buddy-system-huo-ban-xi-tong
+
+https://s3.shizhz.me/linux-mm/3.2-wu-li-nei-cun/3.2.5-slab-slub-slob
+
+https://zhuanlan.zhihu.com/p/36140017
+
+Buddy 系统解决了物理内存分配的外部碎片问题。slab分配需要解决的是内存的内部碎片问题。
+
+### buddy system
+二分剩下的连续内存页被放入对应的空闲链表中
+
+![buddy system](description/buddy_system1.png)
+![buddy system](description/buddy_system2.png)
+
 
 ### slab分配器
+每个kmem_cache对应一种大小object分配释放，内部包含三条slab链表。内存块的申请从partial或free链表中的slab上分配，以及释放回相应slab。
 
-![ptmalloc架构图](description/slab架构.png)
+![slab架构图](description/slab架构.png)
+
